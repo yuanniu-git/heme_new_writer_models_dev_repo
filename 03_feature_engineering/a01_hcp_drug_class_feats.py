@@ -146,7 +146,10 @@ overlap_hcp_drug_cnt = (overlap_subset.withColumn("SHP_YR_MO",F.date_format("SHP
                                       .filter(col("BH_ID").isNotNull())
                                       .groupby("BH_ID","PRD_GRP_NM","SHP_YR_MO")
                                       .agg(countDistinct("PRD_NM").alias("UNIQUE_DRUGS_cnt")))
-display(overlap_hcp_drug_cnt.limit(15))
+
+# COMMAND ----------
+
+display(overlap_hcp_drug_cnt)
 
 # COMMAND ----------
 
@@ -169,6 +172,10 @@ overlap_hcp_drug_cnt_cross_join = (
 
 # COMMAND ----------
 
+overlap_hcp_drug_cnt_cross_join.display()
+
+# COMMAND ----------
+
 # overlap_hcp_drug_cnt_cross_join.filter(col("BH_ID")=='2042C3F9-D').display()
 
 # COMMAND ----------
@@ -177,7 +184,10 @@ overlap_hcp_drug_rolling_cnt = (overlap_hcp_drug_cnt_cross_join
                                 .groupby("BH_ID", "PRD_GRP_NM", "SHP_YR_MO")
                                 .agg(sum('PREV_UNIQUE_DRUGS_cnt')).withColumnRenamed('sum(PREV_UNIQUE_DRUGS_cnt)', f'OVP_UNIQUE_DRUGS_CNT_{look_back_window}M') 
                                                            ).cache()
-overlap_hcp_drug_rolling_cnt.limit(15).display()
+
+# COMMAND ----------
+
+overlap_hcp_drug_rolling_cnt.display()
 
 # COMMAND ----------
 
@@ -185,7 +195,10 @@ overlap_hcp_drug_rolling_cnt.limit(15).display()
 overlap_hcp_drug_rolling_cnt_pivot = (overlap_hcp_drug_rolling_cnt.groupBy(["BH_ID", "SHP_YR_MO"])
                                       .pivot("PRD_GRP_NM")
                                       .agg({f'OVP_UNIQUE_DRUGS_CNT_{look_back_window}M': "first"})).cache()
-overlap_hcp_drug_rolling_cnt_pivot.limit(15).display()
+
+# COMMAND ----------
+
+overlap_hcp_drug_rolling_cnt_pivot.display()
 
 # COMMAND ----------
 
@@ -195,7 +208,10 @@ overlap_hcp_drug_rolling_cnt_pivot = overlap_hcp_drug_rolling_cnt_pivot.select(
     *[col(c).alias(f"OVP_UNIQUE_DRUGS_CNT_{c}_{look_back_window}M") for c in overlap_hcp_drug_rolling_cnt_pivot.columns if c not in ["BH_ID", "SHP_YR_MO"]]
 ).cache()
 overlap_hcp_drug_rolling_cnt_pivot = overlap_hcp_drug_rolling_cnt_pivot.fillna(0)
-overlap_hcp_drug_rolling_cnt_pivot.limit(15).display()
+
+# COMMAND ----------
+
+overlap_hcp_drug_rolling_cnt_pivot.display()
 
 # COMMAND ----------
 
@@ -211,7 +227,6 @@ overlap_hcp_drug_rolling_cnt_pivot.filter(col("BH_ID")=='2042C3F9-D').display()
 hcp_month_pair = (overlap_hcp_drug_rolling_cnt.select("BH_ID").distinct()
                   .crossJoin(distinct_YR_MM)
                   .orderBy('BH_ID','SHP_YR_MO'))
-hcp_month_pair.limit(15).display()
 
 # COMMAND ----------
 
@@ -244,16 +259,20 @@ overlap_hcp_drug_rolling_cnt_fillna.count()
 
 # COMMAND ----------
 
+overlap_hcp_drug_rolling_cnt_fillna.display()
+
+# COMMAND ----------
+
 overlap_hcp_drug_rolling_cnt_fillna.filter(col("BH_ID")=='2042C3F9-D').display()
 
 # COMMAND ----------
 
-overlap_hcp_drug_rolling_cnt.filter(col("BH_ID")=='2042C3F9-D').orderBy('BH_ID','PRD_GRP_NM','SHP_YR_MO').display()
+overlap_hcp_drug_rolling_cnt_fillna.filter(col("BH_ID")=='BH10060872').display()
 
 # COMMAND ----------
 
-overlap_hcp_drug_rolling_cnt.filter(col("BH_ID")=='BH10060872').orderBy('BH_ID','PRD_GRP_NM','SHP_YR_MO').display()
+overlap_hcp_drug_rolling_cnt_fillna.filter(col("BH_ID")=='BH10003313').display()
 
 # COMMAND ----------
 
-
+overlap_hcp_drug_cnt.filter(col("BH_ID")=='BH10003313').display()
