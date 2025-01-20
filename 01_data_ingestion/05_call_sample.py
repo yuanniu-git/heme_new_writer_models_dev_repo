@@ -10,18 +10,18 @@ end_date = '2024-11-30'
 
 # COMMAND ----------
 
-# Get data from Snowflake
 # Note: The BETWEEN SQL clause is inclusive on both dates
-overlap_rx = get_data_snowflake(
+# Get data from Snowflake
+sdf = get_data_snowflake(
 f"""
-  SELECT *      
-  FROM PHCDW.PHCDW_CDM.TMP_HEM_OVLP_DLT_VW
-  WHERE SHP_DT BETWEEN '{start_date}' AND '{end_date}'
+  SELECT * FROM CPH_DB_PROD.ANALYTICS_V2.ANLT_BASE_FACT_CUST_CALL_SMPL 
+  WHERE PROD_BRAND_NM in ('JIVI','KOVALTRY') 
+  AND CALL_SMPL_DATE BETWEEN '{start_date}' AND '{end_date}'
 """
 )
-print(overlap_rx.count(), len(overlap_rx.columns))
-display(overlap_rx.limit(15))
+print(sdf.count(),len(sdf.columns))
+# display(sdf.limit(15))
 
 # COMMAND ----------
 
-save_sdf(overlap_rx, 'heme_data', 'overlap_rx')
+save_sdf(sdf, 'heme_data', 'call_sample_data')
