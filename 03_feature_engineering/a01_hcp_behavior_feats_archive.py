@@ -43,28 +43,7 @@ print(
 
 # COMMAND ----------
 
-# take a subset of columns of overlap data based on columns shortlist
-overlap_subset = overlap_raw_data.select(col_shortlist)
-
-# COMMAND ----------
-
-# Convert to Pandas dataframe from Spark dataframe
-overlap_subset_df = overlap_subset.toPandas()
-
-# COMMAND ----------
-
 display(overlap_subset_df.head(10))
-
-# COMMAND ----------
-
-# Check the date ranges of the retrieved overlap data
-date_ranges = overlap_subset_df["SHP_DT"].agg(["min", "max"])
-display(date_ranges)
-
-# COMMAND ----------
-
-res_df = pandas_data_profiler(overlap_subset_df)
-display(res_df)
 
 # COMMAND ----------
 
