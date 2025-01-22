@@ -11,25 +11,22 @@
 
 # Importing packages
 from pyspark.sql import functions as F  # Importing functions from pyspark.sql
-from pyspark.sql.functions import *
 from pyspark.sql import Window
 from pyspark.sql import Row
 import pandas as pd
 
 # COMMAND ----------
 
-# importing the helper functions
-%run "/Workspace/Repos/yuan.niu@bayer.com/heme_new_writer_models_dev_repo/02_data_processing/helper_functions"
+import os
+os.getcwd()
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC ### Setting variable values to be used later
+# MAGIC %run "../00_config/set-up"
 
 # COMMAND ----------
 
-start_month = "2019-12"
-end_month = "2024-11"
+# MAGIC %run "/Workspace/Repos/yuan.niu@bayer.com/heme_new_writer_models_dev_repo/02_data_processing/helper_functions"
 
 # COMMAND ----------
 
@@ -95,6 +92,10 @@ print(
 
 # COMMAND ----------
 
+display(overlap_raw_data.limit(15))
+
+# COMMAND ----------
+
 # Checking duplicate records in original dataframe if there are any
 duplicate_records = (
     overlap_raw_data.groupBy(overlap_raw_data.columns).count().filter("count > 1")
@@ -116,15 +117,48 @@ overlap_subset = overlap_raw_data.select(col_shortlist)
 
 # COMMAND ----------
 
+# Check the date ranges of the retrieved overlap data
+overlap_subset.select(F.min("SHP_DT"), F.max("SHP_DT")).show()
 
+# COMMAND ----------
+
+# Convert to Pandas dataframe from Spark dataframe
+# overlap_subset_df = overlap_subset.toPandas()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Creating a year-month column in the original dataframe which is used in downstream analysis various times
+
+# COMMAND ----------
+
+# Convert SHP_DT to date and create a new column SHP_YR_MO with year-month format
+overlap_subset = overlap_subset.withColumn("SHP_DT", F.to_date("SHP_DT"))
+overlap_subset = overlap_subset.withColumn("SHP_YR_MO", F.date_format("SHP_DT", "yyyy-MM"))
+
+# Reorder columns to place SHP_YR_MO next to SHP_DT
+columns = overlap_subset.columns
+shp_dt_index = columns.index("SHP_DT")
+columns.insert(shp_dt_index + 1, columns.pop(columns.index("SHP_YR_MO")))
+overlap_subset = overlap_subset.select(*columns)
+
+# COMMAND ----------
+
+display(overlap_subset.limit(15))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Fill the missing values in some categorical columns to avoid problems in feature engineering step
 
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-
+# Filling missing values in categorical variables
+overlap_subset = overlap_subset.fillna(
+  {'EPSDC': 'UNK', 
+   'PRPHY': 'UNK'}
+  )
 
 # COMMAND ----------
 
@@ -133,4 +167,4 @@ overlap_subset = overlap_raw_data.select(col_shortlist)
 
 # COMMAND ----------
 
-save_sdf(overlap_rx, 'heme_data', 'overlap_preprocessed')
+save_sdf(overlap_subset, 'heme_data', 'overlap_preprocessed')
