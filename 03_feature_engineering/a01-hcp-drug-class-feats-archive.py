@@ -26,6 +26,10 @@ import pandas as pd
 
 # COMMAND ----------
 
+# MAGIC %run "../00_config/set-up"
+
+# COMMAND ----------
+
 overlap_raw_data = spark.sql("SELECT * FROM heme_data.overlap_rx")
 print('Row count: ', overlap_raw_data.count(), 'Column Count: ', len(overlap_raw_data.columns))
 
@@ -85,14 +89,14 @@ col_shortlist = [
 
 # COMMAND ----------
 
-# take a subset of columns of overlap data based on columns shortlist
-overlap_subset = overlap_raw_data.select(col_shortlist)
-
-# COMMAND ----------
-
 # Converting the original overlap data spark dataframe to pandas dataframe
 """ Convert DecimalType columns to float to avoid UserWarning: The conversion of DecimalType columns is inefficient and may take a long time. Column names: [IU, PTD_FNL_CLM_AMT] If those columns are not necessary, you may consider dropping them or converting to primitive types before the conversion."""
 overlap_raw_data = overlap_raw_data.withColumn("IU", overlap_raw_data["IU"].cast("float"))
+
+# COMMAND ----------
+
+# take a subset of columns of overlap data based on columns shortlist
+overlap_subset = overlap_raw_data.select(col_shortlist)
 
 # COMMAND ----------
 
@@ -127,6 +131,76 @@ display(overlap_subset_df[['PRD_NM','PRD_GRP_NM']].value_counts(normalize=True))
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### Patient Rx history
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### PRH_A1
+
+# COMMAND ----------
+
+sum_col = 'IU'
+overlap_hcp_ptnt_sum = (overlap_subset.withColumn("SHP_YR_MO",F.date_format("SHP_DT", "yyyy-MM"))
+                                      .groupby("BH_ID","SHP_YR_MO",'PATIENT_ID')
+                                      .agg(sum(sum_col).alias( f'OVP_{sum_col}_TOTAL')))
+
+# COMMAND ----------
+
+display(overlap_hcp_ptnt_sum.filter(col('BH_ID')=='BH10010678').limit(20))
+
+# COMMAND ----------
+
+HEMLIBRA
+ALTUVIIIO
+OTHER SHL (ADVATE, RECOMBINATE, XYNTHA,NUWIQ,NOVOEIGHT,AFSTYLA)
+OTHER EHL (ELOCATE, ADYNOVATE, ESPEROCT)
+
+# COMMAND ----------
+
+grp_by_col = 'PRD_NM'
+sum_col = 'IU'
+overlap_hcp_ptnt_groupby_sum = (overlap_subset.withColumn("SHP_YR_MO",F.date_format("SHP_DT", "yyyy-MM"))
+                                      .groupby("BH_ID","SHP_YR_MO",'PATIENT_ID',grp_by_col)
+                                      .agg(sum(sum_col).alias( f'OVP_{sum_col}_TOTAL')))
+
+# COMMAND ----------
+
+bayer_prod_list = ['KOVALTRY','KOGENATE','JIVI']
+overlap_hcp_ptnt_groupby_sum_bayer = overlap_hcp_ptnt_groupby_sum.filter(col(grp_by_col).isin(bayer_prod_list))
+
+# COMMAND ----------
+
+overlap_hcp_ptnt_groupby_sum_bayer.display()
+
+# COMMAND ----------
+
+# Pivot the DataFrame to wide format
+pivot_col = 'PRD_NM'
+overlap_hcp_ptnt_groupby_sum_bayer_pivot = (overlap_hcp_ptnt_groupby_sum_bayer.groupBy(["BH_ID", "SHP_YR_MO",   'PATIENT_ID'])
+                                      .pivot(pivot_col)
+                                      .agg({'OVP_IU_TOTAL': "first"})).cache()
+
+
+# COMMAND ----------
+
+# Rename the columns to add the category names to column names
+renamed_columns = [
+    col(c).alias(f"OVP_IU_TOTAL_{c}") if c not in ["BH_ID", "SHP_YR_MO", "PATIENT_ID"] else col(c)
+    for c in overlap_hcp_ptnt_groupby_sum_bayer_pivot.columns
+]
+
+overlap_hcp_ptnt_groupby_sum_bayer_pivot = overlap_hcp_ptnt_groupby_sum_bayer_pivot.select(
+    *renamed_columns
+).cache()
+
+# COMMAND ----------
+
+display(overlap_hcp_ptnt_groupby_sum_bayer_pivot.filter(col('BH_ID')=='BH10010678').limit(20))
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### Calculate unique drug count in the rolling lookback window per HCP per Month
 
 # COMMAND ----------
@@ -138,6 +212,10 @@ look_back_window = 12
 
 # Fill missing values in PRD_GRP_NM and PRD_NM with 'UNKNOWN'
 overlap_subset = overlap_subset.fillna({"PRD_GRP_NM": "UNKNOWN", "PRD_NM": "UNKNOWN"})
+
+# COMMAND ----------
+
+display(overlap_subset.limit(20))
 
 # COMMAND ----------
 
