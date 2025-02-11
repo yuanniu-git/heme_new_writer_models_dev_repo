@@ -25,4 +25,20 @@ print(sdf.count(),len(sdf.columns))
 
 # COMMAND ----------
 
+display(sdf.limit(15))
+
+# COMMAND ----------
+
+display(sdf.select('FLD_FORCE_ID', 'FLD_FORCE_NM', 'FLD_FORCE_DESC').distinct())
+
+# COMMAND ----------
+
+display(sdf
+        .select('FLD_FORCE_ID', 'FLD_FORCE_DESC')
+        .groupBy('FLD_FORCE_ID', 'FLD_FORCE_DESC')
+        .count()
+        .orderBy('count'))
+
+# COMMAND ----------
+
 save_sdf(sdf, 'heme_data', 'call_activity_data')

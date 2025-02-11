@@ -24,4 +24,15 @@ display(overlap_rx.limit(15))
 
 # COMMAND ----------
 
+duplicate_records = (
+  overlap_rx
+  .groupBy(overlap_rx.columns)
+  .count()
+  .filter("count > 1")
+  .drop("count")
+  )
+display(duplicate_records)
+
+# COMMAND ----------
+
 save_sdf(overlap_rx, 'heme_data', 'overlap_rx')
