@@ -148,6 +148,10 @@ display(overlap_subset.limit(15))
 
 # COMMAND ----------
 
+overlap_subset.count()
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### Fill the missing values in some categorical columns to avoid problems in feature engineering step
 
@@ -163,8 +167,42 @@ overlap_subset = overlap_subset.fillna(
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### Remove patients with multiple birth year
+
+# COMMAND ----------
+
+ptnt_brth_yr_cnt = overlap_subset.groupBy('PATIENT_ID').agg(F.countDistinct('BRTH_YR').alias('PTNT_BRTH_YR_CNT'))
+ptnt_brth_yr_cnt.filter(col("PTNT_BRTH_YR_CNT") > 1).count() #617
+
+# COMMAND ----------
+
+ptnt_wi_multi_brth_yr = ptnt_brth_yr_cnt.filter(col("PTNT_BRTH_YR_CNT") > 1).select("PATIENT_ID").distinct().rdd.flatMap(lambda x: x).collect()
+
+# COMMAND ----------
+
+len(ptnt_wi_multi_brth_yr)
+
+# COMMAND ----------
+
+overlap_subset_wo_multi_brth_yr = overlap_subset.filter(~overlap_subset.PATIENT_ID.isin(ptnt_wi_multi_brth_yr))
+
+# COMMAND ----------
+
+overlap_subset_wo_multi_brth_yr.count()
+
+# COMMAND ----------
+
+874334 - 819174
+
+# COMMAND ----------
+
+55160/874334
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### Writing pre-processed Overlap dataset to Hivestore
 
 # COMMAND ----------
 
-save_sdf(overlap_subset, 'heme_data', 'overlap_preprocessed')
+save_sdf(overlap_subset_wo_multi_brth_yr, 'heme_data', 'overlap_preprocessed')
